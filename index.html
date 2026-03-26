@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hendryu Oliveira | Editor de Vídeo</title>
+    
+    <!-- GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CONFIGURAÇÕES GERAIS --- */
+        :root {
+            --bg-primary: #0A0A0A;
+            --bg-secondary: #111111;
+            --accent-primary: #F5A623; /* Âmbar */
+            --accent-secondary: #FF6B35; /* Laranja-fogo */
+            --text-primary: #F0F0F0;
+            --text-secondary: #888888;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Bebas Neue', cursive;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        /* --- EFEITO DE GRÃO (NOISE) --- */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- UTILITÁRIOS --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-padding {
+            padding: 100px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.2rem;
+            background: var(--accent-primary);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn:hover {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 20px rgba(245, 166, 35, 0.4);
+            transform: translateY(-3px);
+        }
+
+        /* --- SCROLL REVEAL ANIMATION --- */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 1. HERO SECTION --- */
+        #hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        /* Linhas decorativas de fundo */
+        #hero::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+            top: 50%;
+            left: -25%;
+            transform: rotate(-15deg);
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        #hero::after {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-secondary), transparent);
+            top: 45%;
+            left: -25%;
+            transform: rotate(-15deg);
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        /* Cursor de timeline animado */
+        .timeline-cursor {
+            position: absolute;
+            top: 0;
+            left: -2px;
+            width: 2px;
+            height: 100%;
+            background: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-primary);
+            z-index: 5;
+            animation: moveCursor 15s linear infinite;
+        }
+
+        @keyframes moveCursor {
+            0% { left: 0%; }
+            100% { left: 100%; }
+        }
+
+        .hero-content {
+            z-index: 10;
+        }
+
+        .hero-name {
+            font-size: clamp(60px, 10vw, 120px);
+            line-height: 0.9;
+            margin-bottom: 1rem;
+            background: linear-gradient(to bottom, #fff, #ccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: var(--accent-primary);
+            margin-bottom: 1.5rem;
+            min-height: 1.2em;
+        }
+
+        .hero-description {
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* --- 2. POSICIONAMENTO --- */
+        #positioning {
+            background-color: var(--bg-secondary);
+        }
+
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .pos-text h2 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-primary);
+        }
+
+        .pos-visual {
+            position: relative;
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* Simulação de timeline */
+        .timeline-bar {
+            height: 20px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            background: #222;
+        }
+
+        .timeline-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--accent-primary);
+            animation: barGrow 4s infinite alternate ease-in-out;
+        }
+
+        .bar-1::after { width: 70%; animation-delay: 0s; background: var(--accent-primary); }
+        .bar-2::after { width: 40%; animation-delay: 0.5s; background: var(--accent-secondary); }
+        .bar-3::after { width: 85%; animation-delay: 1s; background: #4a90e2; }
+        .bar-4::after { width: 60%; animation-delay: 1.5s; background: var(--accent-primary); }
+
+        @keyframes barGrow {
+            0% { transform: scaleX(0.1); transform-origin: left; }
+            100% { transform: scaleX(1); transform-origin: left; }
+        }
+
+        /* --- 3. SERVIÇOS --- */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .service-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 2.5rem 2rem;
+            border-radius: 4px;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-primary);
+            box-shadow: 0 10px 30px rgba(245, 166, 35, 0.1);
+        }
+
+        .service-card svg {
+            width: 40px;
+            height: 40px;
+            fill: var(--accent-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .service-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .service-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* --- 4. DIFERENCIAIS --- */
+        #differentials {
+            background-color: var(--bg-secondary);
+        }
+
+        .diff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 2rem;
+        }
+
+        .diff-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .diff-item h3 {
+            color: var(--accent-primary);
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .diff-item h3 svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent-primary);
+        }
+
+        .diff-item p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* --- 5. PORTFÓLIO --- */
+        .portfolio-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .portfolio-header h2 {
+            font-size: 3.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .portfolio-header p {
+            color: var(--text-secondary);
+        }
+
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .portfolio-item {
+            position: relative;
+            aspect-ratio: 9/16;
+            background: linear-gradient(45deg, #111, #222);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--glass-border);
+        }
+
+        .portfolio-item:hover .portfolio-overlay {
+            opacity: 1;
+        }
+
+        .portfolio-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: var(--transition);
+            backdrop-filter: blur(4px);
+        }
+
+        .play-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 0 20px rgba(245, 166, 35, 0.5);
+        }
+
+        .play-icon svg {
+            width: 25px;
+            height: 25px;
+            fill: #000;
+            margin-left: 4px;
+        }
+
+        .portfolio-item h4 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.5rem;
+        }
+
+        /* --- MODAL DE VÍDEO --- */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            aspect-ratio: 9/16;
+            background: #000;
+            border: 1px solid var(--glass-border);
+        }
+
+        .modal-content video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            font-family: sans-serif;
+        }
+
+        /* --- 6. CTA FINAL --- */
+        #cta-final {
+            background: linear-gradient(to bottom, #111, #0A0A0A);
+            text-align: center;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .cta-content h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            max-width: 800px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.1;
+        }
+
+        .contact-links {
+            margin-top: 3rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .contact-links a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* --- 7. FOOTER --- */
+        footer {
+            padding: 2rem 0;
+            border-top: 1px solid var(--glass-border);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* --- RESPONSIVIDADE --- */
+        @media (max-width: 768px) {
+            .pos-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .section-padding {
+                padding: 60px 0;
+            }
+            .pos-text h2 {
+                font-size: 2.5rem;
+            }
+            .portfolio-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="noise-overlay"></div>
+
+    <!-- 1. HERO -->
+    <section id="hero">
+        <div class="timeline-cursor"></div>
+        <div class="container hero-content">
+            <h1 class="hero-name reveal">Hendryu Oliveira</h1>
+            <h2 class="hero-subtitle" id="typewriter"></h2>
+            <p class="hero-description reveal">
+                Transformo vídeos comuns em conteúdos que prendem atenção, aumentam retenção e fortalecem a presença digital.
+            </p>
+            <a href="#portfolio" class="btn reveal">Ver meu trabalho ↓</a>
+        </div>
+    </section>
+
+    <!-- 2. POSICIONAMENTO -->
+    <section id="positioning" class="section-padding">
+        <div class="container pos-grid">
+            <div class="pos-text reveal">
+                <h2>Foco em Retenção</h2>
+                <p>Meu foco é criar vídeos estratégicos, pensados para manter o público assistindo até o final e gerar mais engajamento. Trabalho com cortes dinâmicos, ritmo, narrativa e elementos visuais que aumentam a retenção — fundamentais para quem quer crescer nas redes sociais.</p>
+            </div>
+            <div class="pos-visual reveal">
+                <div class="timeline-bar bar-1"></div>
+                <div class="timeline-bar bar-2"></div>
+                <div class="timeline-bar bar-3"></div>
+                <div class="timeline-bar bar-4"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. SERVIÇOS -->
+    <section id="services" class="section-padding">
+        <div class="container">
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <h2 style="font-size: 3rem;" class="reveal">O Que Eu Faço</h2>
+            </div>
+            <div class="services-grid">
+                <!-- Card 1 -->
+                <div class="service-card reveal">
+                    <svg viewBox="0 0 24 24"><path d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z" /></svg>
+                    <h3>Edição Vertical</h3>
+                    <p>Reels, Shorts e TikTok otimizados para o algoritmo.</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="service-card reveal">
+                    <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,7V12.41L15.59,17L17,15.59L13,11.59V7H11Z" /></svg>
+                    <h3>Cortes Dinâmicos</h3>
+                    <p>Ritmo acelerado para manter a atenção constante.</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="service-card reveal">
+                    <svg viewBox="0 0 24 24"><path d="M13,9H11V7H13M13,17H11V15H13M11,13H13V11H11M15,9H17V7H15M15,17H17V15H15M17,13H15V11H17M9,9H7V7H9M9,17H7V15H9M7,13H9V11H7M21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19V5A2,2 0 0,0 21,3Z" /></svg>
+                    <h3>Legendas Animadas</h3>
+                    <p>Legendas que saltam aos olhos e facilitam o consumo.</p>
+                </div>
+                <!-- Card 4 -->
+                <div class="service-card reveal">
+                    <svg viewBox="0 0 24 24"><path d="M12,18H6V14H12V18M21,14V12L12,7L3,12V14L12,9L21,14M12,11L18,14.33V17.67L12,21L6,17.67V14.33L12,11Z" /></svg>
+                    <h3>Ritmo e Retenção</h3>
+                    <p>Análise de narrativa para evitar o scroll do usuário.</p>
+                </div>
+                <!-- Card 5 -->
+                <div class="service-card reveal">
+                    <svg viewBox="0 0 24 24"><path d="M12,22.5A2.5,2.5 0 0,1 9.5,20A2.5,2.5 0 0,1 12,17.5A2.5,2.5 0 0,1 14.5,20A2.5,2.5 0 0,1 12,22.5M12,15.5A2.5,2.5 0 0,1 9.5,13A2.5,2.5 0 0,1 12,10.5A2.5,2.5 0 0,1 14.5,13A2.5,2.5 0 0,1 12,15.5M12,8.5A2.5,2.5 0 0,1 9.5,6A2.5,2.5 0 0,1 12,3.5A2.5,2.5 0 0,1 14.5,6A2.5,2.5 0 0,1 12,8.5Z" /></svg>
+                    <h3>Cor e Áudio</h3>
+                    <p>Tratamento profissional para um visual cinematográfico.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. DIFERENCIAIS -->
+    <section id="differentials" class="section-padding">
+        <div class="container">
+            <div class="diff-grid">
+                <div class="diff-item reveal">
+                    <h3><svg viewBox="0 0 24 24"><path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" /></svg> Agilidade</h3>
+                    <p>Entregas rápidas e processos organizados.</p>
+                </div>
+                <div class="diff-item reveal">
+                    <h3><svg viewBox="0 0 24 24"><path d="M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5Z" /></svg> Resultados</h3>
+                    <p>Foco total no desempenho do seu conteúdo.</p>
+                </div>
+                <div class="diff-item reveal">
+                    <h3><svg viewBox="0 0 24 24"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" /></svg> Compromisso</h3>
+                    <p>Comunicação clara e responsabilidade com prazos.</p>
+                </div>
+                <div class="diff-item reveal">
+                    <h3><svg viewBox="0 0 24 24"><path d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M15.59,13.59L14.58,14.58L12,12L9.41,14.58L8.41,13.59L11,11L8.41,8.41L9.41,7.41L12,10L14.58,7.41L15.59,8.41L13,11L15.59,13.59Z" /></svg> Estratégia</h3>
+                    <p>Edição pensada para maximizar a retenção.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. PORTFÓLIO -->
+    <section id="portfolio" class="section-padding">
+        <div class="container">
+            <div class="portfolio-header reveal">
+                <h2>Trabalhos</h2>
+                <p>Exemplos de edições com foco em retenção, ritmo e clareza de mensagem.</p>
+            </div>
+            
+            <div class="portfolio-grid">
+                <!-- Projeto 01 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/tiscxAaqkgFZPNyx.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/zeFyfxaAaWTaFBMW.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+                <!-- Projeto 02 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/qRwNnVYXxYOMnSNc.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/OnbvlbRoKTPsNdGl.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+                <!-- Projeto 03 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/weQDRQxqixiAojUh.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/ovigYEiYqTVCzcXi.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+                <!-- Projeto 04 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/YAsuscDvlPsEiQtJ.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/lKToLFqkWJemqLwr.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+                <!-- Projeto 05 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/tFCckSjbNNntwGBf.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/CxSIozMlpumSnUvm.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+                <!-- Projeto 06 -->
+                <div class="portfolio-item reveal" data-video="https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/aigPazvBqXDdQsbk.mp4" style="background-image: url('https://files.manuscdn.com/user_upload_by_module/session_file/310519663373139860/MiVuWAuuKjdGagDo.jpg'); background-size: cover; background-position: center;">
+                    <div class="portfolio-overlay">
+                        <div class="play-icon"><svg viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" /></svg></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- INSTRUÇÃO: Para substituir os vídeos, altere o atributo 'data-video' de cada .portfolio-item -->
+            <!-- Exemplo: data-video="caminho/do/seu/video.mp4" -->
+        </div>
+    </section>
+
+    <!-- 6. CTA FINAL -->
+    <section id="cta-final" class="section-padding">
+        <div class="container cta-content">
+            <h2 class="reveal">Se você precisa de vídeos que realmente prendem atenção e ajudam seu conteúdo a crescer, podemos trabalhar juntos.</h2>
+            <a href="https://wa.me/5522996241804" target="_blank" class="btn reveal">Entrar em contato</a>
+            
+            <div class="contact-links reveal">
+                <span>📱 (22) 99624-1804</span>
+                <a href="https://instagram.com/ohendryu" target="_blank">📸 @ohendryu</a>
+                <a href="mailto:contato@hendryuoliveira.com">📧 contato@hendryuoliveira.com</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. FOOTER -->
+    <footer>
+        <div class="container">
+            <p>© 2025 Hendryu Oliveira — Editor de Vídeo</p>
+        </div>
+    </footer>
+
+    <!-- MODAL -->
+    <div class="modal" id="videoModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <video id="modalVideo" controls playsinline>
+                <source src="" type="video/mp4">
+                Seu navegador não suporta vídeos.
+            </video>
+        </div>
+    </div>
+
+    <script>
+        /* --- TYPEWRITER EFFECT --- */
+        const typewriterElement = document.getElementById('typewriter');
+        const text = "Editor de Vídeos";
+        let index = 0;
+
+        function type() {
+            if (index < text.length) {
+                typewriterElement.innerHTML += text.charAt(index);
+                index++;
+                setTimeout(type, 100);
+            }
+        }
+
+        /* --- SCROLL REVEAL --- */
+        const revealElements = document.querySelectorAll('.reveal');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        revealElements.forEach(el => revealObserver.observe(el));
+
+        /* --- MODAL DE VÍDEO --- */
+        const modal = document.getElementById('videoModal');
+        const modalVideo = document.getElementById('modalVideo');
+        const closeModal = document.getElementById('closeModal');
+        const portfolioItems = document.querySelectorAll('.portfolio-item');
+
+        portfolioItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const videoSrc = item.getAttribute('data-video');
+                if (videoSrc) {
+                    modalVideo.src = videoSrc;
+                    modal.classList.add('active');
+                    modalVideo.play();
+                } else {
+                    alert('Este é um placeholder. Adicione o link do vídeo no atributo data-video.');
+                }
+            });
+        });
+
+        function closeVideoModal() {
+            modal.classList.remove('active');
+            modalVideo.pause();
+            modalVideo.src = "";
+        }
+
+        closeModal.addEventListener('click', closeVideoModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeVideoModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeVideoModal();
+            }
+        });
+
+        /* --- INICIALIZAÇÃO --- */
+        window.addEventListener('load', () => {
+            type();
+        });
+    </script>
+</body>
+</html>
